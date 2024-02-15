@@ -70,24 +70,37 @@ function startDrawing(e) {
         startMousePos = pos;
     }
 }
-
 function stopDrawing(e) {
     if (!isDrawing || !startMousePos) return;
 
     const endPos = getMousePosition(e);
-    // Add new guideline to array based on orientation and final position
-    const newGuide = startMousePos.x <= 20 ? 
-        { x: 20, y: endPos.y, isHorizontal: true } : 
-        { x: endPos.x, y: 20, isHorizontal: false };
+    // Initialize newGuideline at the top of your function to ensure it's in scope when used later
+    let newGuideline = {};
 
-    guidelines.push(newGuide);
+    if (startMousePos.x <= 20) {
+        // Assuming horizontal guideline
+        newGuideline = { x: 20, y: endPos.y, isHorizontal: true };
+    } else if (startMousePos.y <= 20) {
+        // Assuming vertical guideline
+        newGuideline = { x: endPos.x, y: 20, isHorizontal: false };
+    }
+
+    // Add the constructed guideline object to the guidelines array
+    guidelines.push(newGuideline);
     isDrawing = false;
-    startMousePos = null;
+    startMousePos = null; // Reset starting position
 
-    // Now redraw everything once to ensure consistency
-    ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear canvas
-    drawRulers(); // Redraw rulers
-    drawGuidelines(); // Redraw all guidelines, including the new one
+    // Clear the canvas and redraw everything to reflect the updated guidelines
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    drawRulers();
+    drawGuidelines();
+
+      
+  console.log("New guideline added:", newGuideline);
+  console.log("Total guidelines:", guidelines.length);
+  console.log("Drawing guidelines, count:", guidelines.length);
+
+  
 }
 
 
@@ -96,49 +109,65 @@ function drawGuide(e) {
     if (!isDrawing || !startMousePos) return;
 
     const currentPos = getMousePosition(e);
-    ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear canvas
-    drawRulers();
-    drawGuidelines(); // Redraw existing guidelines
 
+    // Clear and redraw the canvas to ensure everything is up-to-date
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    drawRulers();
+    drawGuidelines(); // Ensures that all permanent guidelines are redrawn
+
+    // Draw the temporary guideline with improved visibility
     ctx.beginPath();
-    // Determine guideline orientation based on the starting position
-    if (startMousePos.x <= 20) { // Drawing a horizontal guideline
+    // Enhance guideline visibility and distinction
+    ctx.strokeStyle = 'red'; // Make the temporary guideline red for visibility
+    ctx.lineWidth = 2; // Slightly thicker line for the temporary guideline
+    ctx.setLineDash([5, 5]); // Optional: make the line dashed to distinguish it as temporary
+
+    // Determine the guideline orientation based on the starting position
+    if (startMousePos.x <= 20) { // For horizontal guidelines
         ctx.moveTo(20, currentPos.y);
         ctx.lineTo(canvas.width, currentPos.y);
-    } else if (startMousePos.y <= 20) { // Drawing a vertical guideline
+    } else if (startMousePos.y <= 20) { // For vertical guidelines
         ctx.moveTo(currentPos.x, 20);
         ctx.lineTo(currentPos.x, canvas.height);
     }
-    ctx.strokeStyle = 'red';
+
     ctx.stroke();
+
+    // Reset line dash and line width to defaults for other drawings
+    ctx.setLineDash([]); // Remove the line dash effect for subsequent drawings
+    ctx.lineWidth = 1; // Reset the line width to default
 }
+
 
 function drawMeasurementWithArrows(start, end, isHorizontal) {
+    // Calculate the distance and midpoint as before
     const distance = isHorizontal ? Math.abs(end.y - start.y) : Math.abs(end.x - start.x);
-    // Calculate midpoint for the distance label
     const midpoint = isHorizontal ? { x: (start.x + end.x) / 2, y: (start.y + end.y) / 2 } : { x: (start.x + end.x) / 2, y: (start.y + end.y) / 2 };
-    // Offset position for clarity
-    const offset = isHorizontal ? { x: 0, y: -15 } : { x: 15, y: 0 };
 
-    // Drawing arrow indicating measurement direction
-    if (isHorizontal) {
-        drawArrow({ x: start.x, y: start.y + offset.y }, { x: end.x, y: end.y + offset.y });
-    } else {
-        drawArrow({ x: start.x + offset.x, y: start.y }, { x: end.x + offset.x, y: end.y });
-    }
+    // Adjust the offset to position the measurement and arrow away from the guideline to avoid overlap
+    const offset = isHorizontal ? { x: 10, y: -20 } : { x: 20, y: 10 };
 
-    // Background for text for better readability
-    ctx.fillStyle = 'rgba(50, 50, 50, 0.7)';
+    // Drawing the arrow with adjusted start and end points to avoid overlap
+    const adjustedStart = { x: start.x + offset.x, y: start.y + offset.y };
+    const adjustedEnd = { x: end.x + offset.x, y: end.y + offset.y };
+    drawArrow(adjustedStart, adjustedEnd);
+
+    // Adjusting the background and text drawing for the distance label for readability
+    ctx.fillStyle = 'rgba(50, 50, 50, 0.8)'; // Slightly darker background for better contrast
     const textWidth = ctx.measureText(`${distance}px`).width;
-    const backgroundPadding = 5;
-    ctx.fillRect(midpoint.x - textWidth / 2 - backgroundPadding + offset.x, midpoint.y - 10 + offset.y, textWidth + 2 * backgroundPadding, 20);
+    const backgroundPadding = 4;
+    const textPosition = { x: midpoint.x + offset.x, y: midpoint.y + offset.y };
 
-    // Text indicating measurement
-    ctx.font = '12px Arial';
-    ctx.fillStyle = 'white';
+    // Drawing the background for the text
+    ctx.fillRect(textPosition.x - textWidth / 2 - backgroundPadding, textPosition.y - 10, textWidth + (2 * backgroundPadding), 20);
+
+    // Drawing the text
+    ctx.font = 'bold 12px Arial'; // Making the font bold for better readability
+    ctx.fillStyle = 'white'; // White text for contrast
     ctx.textAlign = 'center';
-    ctx.fillText(`${distance}px`, midpoint.x + offset.x, midpoint.y + 4 + offset.y);
+    ctx.fillText(`${distance}px`, textPosition.x, textPosition.y + 4);
 }
+
 
 function drawArrow(from, to) {
     // Size and angle of the arrow head
@@ -175,44 +204,34 @@ function drawArrow(from, to) {
 }
 
 
-
 function drawGuidelines() {
-    // Sort guidelines for sequential distance calculation
-    const sortedHorizontalGuides = guidelines.filter(g => g.isHorizontal).sort((a, b) => a.y - b.y);
-    const sortedVerticalGuides = guidelines.filter(g => !g.isHorizontal).sort((a, b) => a.x - b.x);
-
-    // Draw horizontal guidelines and distances
-    sortedHorizontalGuides.forEach((guide, index) => {
-        if (index < sortedHorizontalGuides.length - 1) {
-            // Draw guideline
-            ctx.beginPath();
-            ctx.moveTo(30, guide.y); // Start from the edge of the ruler
+    guidelines.forEach((guide, index, array) => {
+        ctx.beginPath();
+        if (guide.isHorizontal) {
+            ctx.moveTo(30, guide.y);
             ctx.lineTo(canvas.width, guide.y);
-            ctx.strokeStyle = '#B3B3B3'; // Light grey for guidelines
-            ctx.stroke();
-
-            // Draw measurement with arrows between this and the next guideline
-            const nextGuide = sortedHorizontalGuides[index + 1];
-            drawMeasurementWithArrows({x: 30, y: guide.y}, {x: 30, y: nextGuide.y}, true);
-        }
-    });
-
-    // Draw vertical guidelines and distances
-    sortedVerticalGuides.forEach((guide, index) => {
-        if (index < sortedVerticalGuides.length - 1) {
-            // Draw guideline
-            ctx.beginPath();
-            ctx.moveTo(guide.x, 30); // Start from the edge of the ruler
+        } else {
+            ctx.moveTo(guide.x, 20);
             ctx.lineTo(guide.x, canvas.height);
-            ctx.strokeStyle = '#B3B3B3'; // Light grey for guidelines
-            ctx.stroke();
+        }
+        ctx.strokeStyle = '#B3B3B3';
+        ctx.stroke();
 
-            // Draw measurement with arrows between this and the next guideline
-            const nextGuide = sortedVerticalGuides[index + 1];
-            drawMeasurementWithArrows({x: guide.x, y: 30}, {x: nextGuide.x, y: 30}, false);
+        // Now, check if we should draw a measurement and arrow to the next guideline
+        if (index < array.length - 1) {
+            const nextGuide = array[index + 1];
+            // Ensure the next guide is of the same orientation before drawing a measurement
+            if (guide.isHorizontal === nextGuide.isHorizontal) {
+                const start = { x: guide.x, y: guide.y };
+                const end = { x: nextGuide.x, y: nextGuide.y };
+                // Adjust start and end points if needed based on your measurement logic
+                drawMeasurementWithArrows(start, end, guide.isHorizontal);
+            }
         }
     });
 }
+
+
 
 
 
@@ -387,4 +406,3 @@ function createImageOverlay(imageURL) {
 function adjustOverlayOpacity(overlay, opacity) {
     overlay.style.opacity = opacity;
   }
-  
