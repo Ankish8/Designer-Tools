@@ -16,51 +16,37 @@ document.body.appendChild(canvas);
 
 // Function to draw rulers
 function drawRulers() {
-    // Clear existing ruler areas
-    ctx.clearRect(0, 0, canvas.width, 30); // Clear area for horizontal ruler
-    ctx.clearRect(0, 0, 30, canvas.height); // Clear area for vertical ruler
+    const rulerHeight = 30; // Increased ruler height for better legibility
+    ctx.clearRect(0, 0, canvas.width, rulerHeight); // Clear area for horizontal ruler
+    ctx.clearRect(0, 0, rulerHeight, canvas.height); // Clear area for vertical ruler
 
-    // Dark mode background colors
-    ctx.fillStyle = 'rgba(36, 36, 36, 0.95)'; // Dark background with some transparency
-    ctx.fillRect(0, 0, canvas.width, 20); // Horizontal ruler background
-    ctx.fillRect(0, 0, 20, canvas.height); // Vertical ruler background
+    // Apply dark theme styling
+    ctx.fillStyle = 'rgba(31, 31, 31, 1)'; // Dark color for the background
+    ctx.fillRect(0, 0, canvas.width, rulerHeight); // Fill horizontal ruler background
+    ctx.fillRect(0, 0, rulerHeight, canvas.height); // Fill vertical ruler background
 
-    // Styling for the ruler markings and numbers
-    ctx.font = '10px Helvetica';
-    ctx.fillStyle = '#FFF'; // White text for dark mode
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)'; // Semi-transparent white for markings
-    ctx.lineWidth = 2; // Increased width for ruler lines
+    ctx.font = '12px Helvetica';
+    ctx.fillStyle = '#C0C0C0'; // Light grey for text
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)'; // Semi-transparent white for line markings
 
-    // Drawing the horizontal ruler markings and numbers
-    for (let x = 0; x < canvas.width; x += 10) {
+    // Adjust marking intervals to every 100 units
+    for (let x = 0; x < canvas.width; x += 100) {
         ctx.beginPath();
-        // Only draw longer line and number every 100 units
-        if (x % 100 === 0) {
-            ctx.moveTo(x, 0);
-            ctx.lineTo(x, 20); // Longer line for every 100 units
-            ctx.fillText(x, x + 5, 17); // Positioning text a bit lower for visibility
-        } else {
-            ctx.moveTo(x, 0);
-            ctx.lineTo(x, 10); // Short line for intermediate 10 units
-        }
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, rulerHeight);
+        ctx.fillText(x, x + 5, 15); // Adjust text position for visibility
         ctx.stroke();
     }
 
-    // Drawing the vertical ruler markings and numbers
-    for (let y = 0; y < canvas.height; y += 10) {
+    for (let y = 0; y < canvas.height; y += 100) {
         ctx.beginPath();
-        // Only draw longer line and number every 100 units
-        if (y % 100 === 0) {
-            ctx.moveTo(0, y);
-            ctx.lineTo(20, y); // Longer line for every 100 units
-            ctx.fillText(y, 2, y + 15); // Adjusting text position for readability
-        } else {
-            ctx.moveTo(0, y);
-            ctx.lineTo(10, y); // Short line for intermediate 10 units
-        }
+        ctx.moveTo(0, y);
+        ctx.lineTo(rulerHeight, y);
+        ctx.fillText(y, 5, y + 10); // Adjust text position for readability
         ctx.stroke();
     }
 }
+
 
   
 
@@ -89,15 +75,21 @@ function stopDrawing(e) {
     if (!isDrawing || !startMousePos) return;
 
     const endPos = getMousePosition(e);
-    if (startMousePos.x <= 20) { // Finalize horizontal guideline
-        guidelines.push({ x: 20, y: endPos.y, isHorizontal: true });
-    } else if (startMousePos.y <= 20) { // Finalize vertical guideline
-        guidelines.push({ x: endPos.x, y: 20, isHorizontal: false });
-    }
+    // Add new guideline to array based on orientation and final position
+    const newGuide = startMousePos.x <= 20 ? 
+        { x: 20, y: endPos.y, isHorizontal: true } : 
+        { x: endPos.x, y: 20, isHorizontal: false };
+
+    guidelines.push(newGuide);
     isDrawing = false;
-    startMousePos = null; // Reset starting position
-    drawGuidelines(); // Redraw guidelines to include the new one
+    startMousePos = null;
+
+    // Now redraw everything once to ensure consistency
+    ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear canvas
+    drawRulers(); // Redraw rulers
+    drawGuidelines(); // Redraw all guidelines, including the new one
 }
+
 
 
 function drawGuide(e) {
@@ -121,21 +113,108 @@ function drawGuide(e) {
     ctx.stroke();
 }
 
+function drawMeasurementWithArrows(start, end, isHorizontal) {
+    const distance = isHorizontal ? Math.abs(end.y - start.y) : Math.abs(end.x - start.x);
+    // Calculate midpoint for the distance label
+    const midpoint = isHorizontal ? { x: (start.x + end.x) / 2, y: (start.y + end.y) / 2 } : { x: (start.x + end.x) / 2, y: (start.y + end.y) / 2 };
+    // Offset position for clarity
+    const offset = isHorizontal ? { x: 0, y: -15 } : { x: 15, y: 0 };
+
+    // Drawing arrow indicating measurement direction
+    if (isHorizontal) {
+        drawArrow({ x: start.x, y: start.y + offset.y }, { x: end.x, y: end.y + offset.y });
+    } else {
+        drawArrow({ x: start.x + offset.x, y: start.y }, { x: end.x + offset.x, y: end.y });
+    }
+
+    // Background for text for better readability
+    ctx.fillStyle = 'rgba(50, 50, 50, 0.7)';
+    const textWidth = ctx.measureText(`${distance}px`).width;
+    const backgroundPadding = 5;
+    ctx.fillRect(midpoint.x - textWidth / 2 - backgroundPadding + offset.x, midpoint.y - 10 + offset.y, textWidth + 2 * backgroundPadding, 20);
+
+    // Text indicating measurement
+    ctx.font = '12px Arial';
+    ctx.fillStyle = 'white';
+    ctx.textAlign = 'center';
+    ctx.fillText(`${distance}px`, midpoint.x + offset.x, midpoint.y + 4 + offset.y);
+}
+
+function drawArrow(from, to) {
+    // Size and angle of the arrow head
+    const headLength = 10;
+    const dx = to.x - from.x;
+    const dy = to.y - from.y;
+    const angle = Math.atan2(dy, dx);
+
+    ctx.strokeStyle = '#FFC107'; // Arrow color
+    ctx.fillStyle = '#FFC107';
+    ctx.lineWidth = 1;
+
+    // Starting path of the arrow from the start square to the end square and drawing the stroke
+    ctx.beginPath();
+    ctx.moveTo(from.x, from.y);
+    ctx.lineTo(to.x, to.y);
+    ctx.stroke();
+
+    // Starting a new path from the head of the arrow to one of the sides of the point
+    ctx.beginPath();
+    ctx.moveTo(to.x, to.y);
+    ctx.lineTo(to.x - headLength * Math.cos(angle - Math.PI / 6), to.y - headLength * Math.sin(angle - Math.PI / 6));
+
+    // Path from the side point of the arrow, to the other side point
+    ctx.lineTo(to.x - headLength * Math.cos(angle + Math.PI / 6), to.y - headLength * Math.sin(angle + Math.PI / 6));
+
+    // Path back to the tip of the arrow, and then again to the opposite side point
+    ctx.lineTo(to.x, to.y);
+    ctx.lineTo(to.x - headLength * Math.cos(angle - Math.PI / 6), to.y - headLength * Math.sin(angle - Math.PI / 6));
+
+    // Draws the paths created above
+    ctx.stroke();
+    ctx.fill();
+}
+
+
 
 function drawGuidelines() {
-  guidelines.forEach(guide => {
-    ctx.beginPath();
-    if (guide.isHorizontal) {
-      ctx.moveTo(0, guide.y);
-      ctx.lineTo(canvas.width, guide.y);
-    } else {
-      ctx.moveTo(guide.x, 0);
-      ctx.lineTo(guide.x, canvas.height);
-    }
-    ctx.strokeStyle = 'blue';
-    ctx.stroke();
-  });
+    // Sort guidelines for sequential distance calculation
+    const sortedHorizontalGuides = guidelines.filter(g => g.isHorizontal).sort((a, b) => a.y - b.y);
+    const sortedVerticalGuides = guidelines.filter(g => !g.isHorizontal).sort((a, b) => a.x - b.x);
+
+    // Draw horizontal guidelines and distances
+    sortedHorizontalGuides.forEach((guide, index) => {
+        if (index < sortedHorizontalGuides.length - 1) {
+            // Draw guideline
+            ctx.beginPath();
+            ctx.moveTo(30, guide.y); // Start from the edge of the ruler
+            ctx.lineTo(canvas.width, guide.y);
+            ctx.strokeStyle = '#B3B3B3'; // Light grey for guidelines
+            ctx.stroke();
+
+            // Draw measurement with arrows between this and the next guideline
+            const nextGuide = sortedHorizontalGuides[index + 1];
+            drawMeasurementWithArrows({x: 30, y: guide.y}, {x: 30, y: nextGuide.y}, true);
+        }
+    });
+
+    // Draw vertical guidelines and distances
+    sortedVerticalGuides.forEach((guide, index) => {
+        if (index < sortedVerticalGuides.length - 1) {
+            // Draw guideline
+            ctx.beginPath();
+            ctx.moveTo(guide.x, 30); // Start from the edge of the ruler
+            ctx.lineTo(guide.x, canvas.height);
+            ctx.strokeStyle = '#B3B3B3'; // Light grey for guidelines
+            ctx.stroke();
+
+            // Draw measurement with arrows between this and the next guideline
+            const nextGuide = sortedVerticalGuides[index + 1];
+            drawMeasurementWithArrows({x: guide.x, y: 30}, {x: nextGuide.x, y: 30}, false);
+        }
+    });
 }
+
+
 
 function getMousePosition(e) {
   return { x: e.clientX, y: e.clientY };
