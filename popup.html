@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Designer Tools Extension</title>
+    <style>
+      body {
+        width: 300px;
+        padding: 10px;
+        font-family: sans-serif;
+      }
+      .section {
+        margin-bottom: 20px;
+      }
+      button,
+      input[type="file"] {
+        width: 100%;
+        padding: 5px;
+        margin-top: 5px;
+      }
+      label {
+        display: block;
+        margin-top: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="section">
+      <button id="toggle-grid">Toggle Grid</button>
+    </div>
+    <div class="section">
+      <label for="upload-design">Upload Design Comparison:</label>
+      <input type="file" id="upload-design" accept="image/*" />
+    </div>
+    <div class="section">
+      <button id="save-guidelines">Save Guidelines</button>
+      <button id="load-guidelines">Load Guidelines</button>
+    </div>
+    <script src="popup.js"></script>
+  </body>
+</html>
