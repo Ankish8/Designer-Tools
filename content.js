@@ -24,10 +24,13 @@ function drawRulers() {
     ctx.fillStyle = 'rgba(31, 31, 31, 1)'; // Dark color for the background
     ctx.fillRect(0, 0, canvas.width, rulerHeight); // Fill horizontal ruler background
     ctx.fillRect(0, 0, rulerHeight, canvas.height); // Fill vertical ruler background
+    ctx.save();
 
     ctx.font = '12px Helvetica';
     ctx.fillStyle = '#C0C0C0'; // Light grey for text
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)'; // Semi-transparent white for line markings
+    ctx.textAlign = 'start';
+
 
     // Adjust marking intervals to every 100 units
     for (let x = 0; x < canvas.width; x += 100) {
@@ -45,6 +48,8 @@ function drawRulers() {
         ctx.fillText(y, 5, y + 10); // Adjust text position for readability
         ctx.stroke();
     }
+    ctx.restore();
+
 }
 
 
@@ -140,34 +145,31 @@ function drawGuide(e) {
 
 
 function drawMeasurementWithArrows(start, end, isHorizontal) {
-    // Calculate the distance and midpoint as before
     const distance = isHorizontal ? Math.abs(end.y - start.y) : Math.abs(end.x - start.x);
+    // Calculate midpoint for the distance label
     const midpoint = isHorizontal ? { x: (start.x + end.x) / 2, y: (start.y + end.y) / 2 } : { x: (start.x + end.x) / 2, y: (start.y + end.y) / 2 };
+    // Offset position for clarity
+    const offset = isHorizontal ? { x: 0, y: -15 } : { x: 15, y: 0 };
 
-    // Adjust the offset to position the measurement and arrow away from the guideline to avoid overlap
-    const offset = isHorizontal ? { x: 10, y: -20 } : { x: 20, y: 10 };
+    // Drawing arrow indicating measurement direction
+    if (isHorizontal) {
+        drawArrow({ x: start.x, y: start.y + offset.y }, { x: end.x, y: end.y + offset.y });
+    } else {
+        drawArrow({ x: start.x + offset.x, y: start.y }, { x: end.x + offset.x, y: end.y });
+    }
 
-    // Drawing the arrow with adjusted start and end points to avoid overlap
-    const adjustedStart = { x: start.x + offset.x, y: start.y + offset.y };
-    const adjustedEnd = { x: end.x + offset.x, y: end.y + offset.y };
-    drawArrow(adjustedStart, adjustedEnd);
-
-    // Adjusting the background and text drawing for the distance label for readability
-    ctx.fillStyle = 'rgba(50, 50, 50, 0.8)'; // Slightly darker background for better contrast
+    // Background for text for better readability
+    ctx.fillStyle = 'rgba(50, 50, 50, 0.7)';
     const textWidth = ctx.measureText(`${distance}px`).width;
-    const backgroundPadding = 4;
-    const textPosition = { x: midpoint.x + offset.x, y: midpoint.y + offset.y };
+    const backgroundPadding = 5;
+    ctx.fillRect(midpoint.x - textWidth / 2 - backgroundPadding + offset.x, midpoint.y - 10 + offset.y, textWidth + 2 * backgroundPadding, 20);
 
-    // Drawing the background for the text
-    ctx.fillRect(textPosition.x - textWidth / 2 - backgroundPadding, textPosition.y - 10, textWidth + (2 * backgroundPadding), 20);
-
-    // Drawing the text
-    ctx.font = 'bold 12px Arial'; // Making the font bold for better readability
-    ctx.fillStyle = 'white'; // White text for contrast
+    // Text indicating measurement
+    ctx.font = '12px Arial';
+    ctx.fillStyle = 'white';
     ctx.textAlign = 'center';
-    ctx.fillText(`${distance}px`, textPosition.x, textPosition.y + 4);
+    ctx.fillText(`${distance}px`, midpoint.x + offset.x, midpoint.y + 4 + offset.y);
 }
-
 
 function drawArrow(from, to) {
     // Size and angle of the arrow head
